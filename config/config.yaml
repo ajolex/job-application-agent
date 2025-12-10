@@ -1,0 +1,153 @@
+# Job Application Agent Configuration
+
+profile:
+  # Path to local HTML profile/CV file
+  local_path: "index.html"
+  # Cache duration in hours (re-parse profile after this time)
+  cache_duration_hours: 24
+  # Output path for cached profile data
+  cache_file: "data/profile_cache.json"
+
+job_search:
+  # Keywords to search for across job boards
+  keywords:
+    - "development economics"
+    - "research associate"
+    - "predoctoral fellow"
+    - "development researcher"
+    - "research analyst"
+    - "research manager"
+    - "associate research manager"
+    - "junior economist"
+    - "research assistant"
+    - "economist"
+    - "data analyst"
+    - "impact evaluation"
+    - "policy research"
+  
+  # Preferred locations (some boards support location filtering)
+  locations:
+    - "Remote"
+    - "Global"
+    - "Washington, DC"
+    - "New York"
+    - "London"
+    - "Nairobi"
+    - "Geneva"
+  
+  # Minimum match score (0-100) to include job in results
+  match_threshold: 70
+  
+  # Maximum number of jobs to process per run
+  max_jobs_per_run: 50
+
+scrapers:
+  # Enabled scrapers (comment out to disable)
+  enabled:
+    - econjobmarket
+    - devex
+    - reliefweb
+    - impactpool
+    - unjobs
+    - worldbank
+    - eighty_thousand_hours
+    # - ssrn  # Often requires authentication
+    # - ideas_repec
+  
+  # Rate limiting: seconds between requests to same domain
+  rate_limit_seconds: 2
+  
+  # Request timeout in seconds
+  timeout_seconds: 30
+  
+  # Maximum retries for failed requests
+  max_retries: 3
+  
+  # User agent rotation
+  rotate_user_agent: true
+
+# Individual scraper configurations
+scraper_configs:
+  econjobmarket:
+    base_url: "https://econjobmarket.org"
+    search_path: "/positions"
+    
+  devex:
+    base_url: "https://www.devex.com"
+    search_path: "/jobs/search"
+    
+  reliefweb:
+    base_url: "https://reliefweb.int"
+    api_url: "https://api.reliefweb.int/v1/jobs"
+    # ReliefWeb has a public API
+    
+  impactpool:
+    base_url: "https://www.impactpool.org"
+    search_path: "/jobs"
+    
+  unjobs:
+    base_url: "https://unjobs.org"
+    search_path: "/search"
+    
+  worldbank:
+    base_url: "https://www.worldbank.org"
+    careers_url: "https://worldbankgroup.csod.com/ats/careersite/search.aspx"
+    
+  eighty_thousand_hours:
+    base_url: "https://jobs.80000hours.org"
+    api_url: "https://api.80000hours.org/job-board/vacancies"
+    
+  ssrn:
+    base_url: "https://www.ssrn.com"
+    jobs_path: "/jobs"
+    
+  ideas_repec:
+    base_url: "https://ideas.repec.org"
+    jobs_path: "/cgi-bin/ej/search.cgi"
+
+gemini:
+  # Model to use for matching and generation
+  model: "gemini-1.5-flash"
+  # Temperature for generation (0.0-1.0)
+  temperature: 0.7
+  # Max tokens for responses
+  max_tokens: 4096
+  # Safety settings
+  safety_threshold: "BLOCK_ONLY_HIGH"
+
+email:
+  # Email recipient (uses EMAIL_ADDRESS env var if not set)
+  recipient: "${EMAIL_ADDRESS}"
+  # Send daily summary email
+  send_summary: true
+  # Attach generated cover letters as PDF
+  attach_cover_letter: true
+  # Attach CV
+  attach_cv: true
+  # CV file path
+  cv_path: "data/cv.pdf"
+  # Email subject template
+  subject_template: "Job Matches Found - {date} ({count} jobs)"
+
+database:
+  # SQLite database path
+  path: "data/jobs.db"
+  # Keep job records for this many days
+  retention_days: 90
+
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR
+  level: "INFO"
+  # Log file path
+  file: "logs/job_agent.log"
+  # Max log file size in MB
+  max_size_mb: 10
+  # Number of backup log files to keep
+  backup_count: 5
+
+# Output paths
+output:
+  # Directory for generated cover letters
+  cover_letters_dir: "output/cover_letters"
+  # Directory for logs
+  logs_dir: "logs"

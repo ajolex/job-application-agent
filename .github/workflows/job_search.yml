@@ -1,0 +1,126 @@
+name: Daily Job Search
+
+on:
+  schedule:
+    # Run daily at 8:00 AM UTC (adjust as needed)
+    - cron: '0 8 * * *'
+  
+  # Allow manual triggering
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run without sending emails'
+        required: false
+        default: false
+        type: boolean
+      skip_scraping:
+        description: 'Skip job scraping'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  job-search:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Set up Gmail credentials
+        env:
+          GMAIL_CREDENTIALS: ${{ secrets.GMAIL_CREDENTIALS }}
+          GMAIL_TOKEN: ${{ secrets.GMAIL_TOKEN }}
+        run: |
+          # Create credentials files from secrets
+          echo "$GMAIL_CREDENTIALS" > credentials.json
+          if [ -n "$GMAIL_TOKEN" ]; then
+            echo "$GMAIL_TOKEN" > token.json
+          fi
+      
+      - name: Create data directory
+        run: |
+          mkdir -p data
+          mkdir -p output/cover_letters
+          mkdir -p logs
+      
+      - name: Copy CV if exists
+        run: |
+          if [ -f "data/cv.pdf" ]; then
+            echo "CV found"
+          else
+            echo "No CV file found at data/cv.pdf"
+          fi
+      
+      - name: Run Job Application Agent
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        run: |
+          ARGS=""
+          
+          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          
+          if [ "${{ github.event.inputs.skip_scraping }}" == "true" ]; then
+            ARGS="$ARGS --skip-scraping"
+          fi
+          
+          python -m src.main $ARGS --verbose
+      
+      - name: Upload cover letters
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cover-letters-${{ github.run_number }}
+          path: output/cover_letters/
+          retention-days: 30
+          if-no-files-found: ignore
+      
+      - name: Upload logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: logs-${{ github.run_number }}
+          path: logs/
+          retention-days: 7
+          if-no-files-found: ignore
+      
+      - name: Upload database
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: database-${{ github.run_number }}
+          path: data/jobs.db
+          retention-days: 30
+          if-no-files-found: ignore
+      
+      - name: Show statistics
+        run: |
+          python -m src.main --stats || true
+      
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const message = `⚠️ Job Application Agent failed!\n\nWorkflow: ${context.workflow}\nRun: ${context.runNumber}\nSee: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            console.log(message);
+            // You can add additional notification logic here
+            // e.g., send to Slack, Discord, or create an issue
