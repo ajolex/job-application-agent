@@ -1,260 +1,154 @@
 # Job Application Agent
 
-Automated job searching, matching, and application preparation for Development Economics Research positions.
+**Your personal assistant for finding Development Economics and Research jobs.**
 
-## Features
+This tool automatically searches multiple job websites every day, finds positions that match your background, writes personalized cover letters, and emails you a summary of the best opportunities.
 
-- **Profile Parsing**: Extracts skills, experience, and qualifications from your HTML CV/profile
-- **Multi-source Job Scraping**: Searches 8+ job boards automatically
-- **AI-Powered Matching**: Uses Google Gemini to score job relevance (0-100)
-- **Cover Letter Generation**: Creates personalized cover letters for matched positions
-- **Email Notifications**: Sends daily summaries with matched jobs and attachments
-- **Duplicate Prevention**: SQLite database tracks processed jobs
-- **GitHub Actions**: Runs automatically on schedule
+---
 
-## Supported Job Boards
+## What Does This Do?
 
-1. **ReliefWeb** - API-based scraping
-2. **DevEx** - International development jobs
-3. **ImpactPool** - Impact sector positions
-4. **UNJobs** - United Nations opportunities
-5. **World Bank** - World Bank Group careers
-6. **80,000 Hours** - High-impact career opportunities
-7. **EconJobMarket** - Academic economics positions
-8. More can be added by extending the scraper framework
+1. **Reads your CV/resume** to understand your skills, experience, and qualifications
+2. **Searches 8+ job websites** including World Bank, UN Jobs, DevEx, ReliefWeb, and academic job boards
+3. **Uses AI to match jobs to your profile** and scores how well each job fits you (0-100)
+4. **Writes draft cover letters** tailored to each matched position
+5. **Sends you a daily email** with your top job matches and ready-to-use cover letters
+6. **Remembers which jobs you've seen** so you never get duplicates
 
-## Quick Start
+---
 
-### 1. Clone and Install
+## Job Boards Searched
 
-```bash
-git clone <your-repo-url>
-cd job-application-agent
-pip install -r requirements.txt
-```
+- **ReliefWeb** – Humanitarian and development jobs worldwide
+- **DevEx** – International development careers
+- **ImpactPool** – Social impact and sustainability roles
+- **UN Jobs** – United Nations positions
+- **World Bank** – World Bank Group opportunities
+- **80,000 Hours** – High-impact career opportunities
+- **EconJobMarket** – Academic economics positions
 
-### 2. Configure
+---
 
-Copy the example environment file and add your credentials:
+## Getting Started
 
-```bash
-cp .env.example .env
-```
+### Step 1: Get the Required Accounts (Free)
 
-Edit `.env`:
-```
-GEMINI_API_KEY=your_gemini_api_key_here
-EMAIL_ADDRESS=your_email@gmail.com
-```
+You'll need two things:
 
-### 3. Add Your Profile
+1. **Google Gemini API Key** (free tier available)
+   - Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Sign in with your Google account
+   - Click "Create API Key"
+   - Copy the key somewhere safe
 
-Place your HTML CV/profile at `index.html` in the project root, or update `config/config.yaml`:
+2. **Gmail Account** (for receiving job notifications)
+   - Use your existing Gmail or create a new one
+   - You'll set up permissions later to let the tool send you emails
 
-```yaml
-profile:
-  local_path: "path/to/your/profile.html"
-```
+### Step 2: Download and Set Up
 
-### 4. Set Up Gmail API (for email notifications)
+1. Download this project to your computer
+2. Find the file called `.env.example` and rename it to `.env`
+3. Open `.env` in any text editor and fill in:
+   - Your Gemini API key
+   - Your email address
+
+### Step 3: Add Your Resume
+
+Save your CV/resume as an HTML file named `index.html` in the project folder. The tool will read this to understand your background.
+
+### Step 4: Set Up Gmail Permissions
+
+This allows the tool to send you email notifications:
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select existing
-3. Enable Gmail API
-4. Create OAuth 2.0 credentials (Desktop application)
-5. Download `credentials.json` to project root
-6. Run the agent once locally to authenticate and generate `token.json`
+2. Create a new project (call it anything you like)
+3. Enable the "Gmail API"
+4. Create credentials (choose "Desktop application")
+5. Download the credentials file and save it as `credentials.json` in the project folder
+6. Run the tool once – it will open a browser window asking you to grant permission
 
-### 5. Run Locally
+### Step 5: Run It!
 
-```bash
-# Full run
-python -m src.main
+Once everything is set up, run the tool and it will:
+- Search all job boards
+- Match jobs to your profile
+- Generate cover letters for good matches
+- Email you the results
 
-# Dry run (no emails sent)
-python -m src.main --dry-run
+---
 
-# Skip scraping (use existing database)
-python -m src.main --skip-scraping
+## How It Works (Non-Technical)
 
-# Show statistics
-python -m src.main --stats
+**Daily Process:**
+1. ☀️ Every morning, the tool wakes up automatically
+2. 🔍 It visits each job website and searches for relevant positions
+3. 🤖 AI reads each job description and compares it to your resume
+4. 📊 Jobs are scored from 0-100 based on how well they match
+5. ✉️ Anything scoring 70+ gets a cover letter draft
+6. 📧 You receive an email with all matched jobs and cover letters
 
-# Verbose output
-python -m src.main -v
-```
+**What You Get:**
+- A daily email with job opportunities ranked by fit
+- Ready-to-customize cover letters for each position
+- Direct links to apply
+- No duplicate listings – it remembers what you've seen
 
-## Configuration
+---
 
-Edit `config/config.yaml` to customize:
+## Customization
 
-```yaml
-job_search:
-  keywords:
-    - "development economics"
-    - "research associate"
-    - "impact evaluation"
-  match_threshold: 70  # Minimum match score (0-100)
-  max_jobs_per_run: 50
+### Change What Jobs to Search For
 
-scrapers:
-  enabled:
-    - reliefweb
-    - devex
-    - impactpool
-  rate_limit_seconds: 2
-
-email:
-  send_summary: true
-  attach_cover_letter: true
-  attach_cv: true
-```
-
-## GitHub Actions Setup
-
-### Required Secrets
-
-Add these secrets to your repository (Settings → Secrets and variables → Actions):
-
-| Secret | Description |
-|--------|-------------|
-| `GEMINI_API_KEY` | Google Gemini API key |
-| `EMAIL_ADDRESS` | Your email address for notifications |
-| `GMAIL_CREDENTIALS` | Contents of `credentials.json` |
-| `GMAIL_TOKEN` | Contents of `token.json` (after initial auth) |
-
-### Schedule
-
-The workflow runs daily at 8:00 AM UTC. Modify `.github/workflows/job_search.yml` to change:
-
-```yaml
-on:
-  schedule:
-    - cron: '0 8 * * *'  # Change time here
-```
-
-### Manual Trigger
-
-Go to Actions → Daily Job Search → Run workflow to trigger manually.
-
-## Project Structure
+Open `config/config.yaml` and modify the keywords list to match your interests:
 
 ```
-job-application-agent/
-├── .github/workflows/     # GitHub Actions
-├── config/
-│   └── config.yaml        # Main configuration
-├── src/
-│   ├── main.py            # Main orchestrator
-│   ├── config.py          # Configuration loader
-│   ├── profile/           # Profile parsing
-│   ├── scrapers/          # Job board scrapers
-│   ├── matching/          # AI job matching
-│   ├── generator/         # Content generation
-│   ├── notifications/     # Email sending
-│   └── database/          # SQLite management
-├── templates/             # Email/cover letter templates
-├── data/                  # Database and cache files
-├── output/                # Generated cover letters
-└── logs/                  # Application logs
+keywords:
+  - "development economics"
+  - "impact evaluation"
+  - "research associate"
+  - "policy analyst"
 ```
 
-## Adding New Job Boards
+### Change the Match Threshold
 
-1. Create a new scraper in `src/scrapers/`:
-
-```python
-from src.scrapers.base_scraper import BaseScraper
-from src.database.db_manager import Job
-
-class NewBoardScraper(BaseScraper):
-    def scrape(self, keywords, max_pages=5):
-        jobs = []
-        # Your scraping logic here
-        return jobs
-    
-    def parse_job_listing(self, element):
-        # Parse individual job listing
-        return self.create_job(
-            url="...",
-            title="...",
-            organization="...",
-            # ...
-        )
-```
-
-2. Register in `src/scrapers/scraper_factory.py`:
-
-```python
-from src.scrapers.newboard import NewBoardScraper
-
-SCRAPER_CLASSES = {
-    # ...
-    "newboard": NewBoardScraper,
-}
-```
-
-3. Add configuration in `config/config.yaml`:
-
-```yaml
-scrapers:
-  enabled:
-    - newboard
-    
-scraper_configs:
-  newboard:
-    base_url: "https://newboard.com"
-```
-
-## CLI Options
+By default, you only get notified about jobs that score 70 or higher. Change this in the same file:
 
 ```
-usage: python -m src.main [-h] [--config CONFIG] [--dry-run]
-                          [--skip-scraping] [--skip-matching]
-                          [--skip-cover-letters] [--skip-email]
-                          [--stats] [--verbose]
-
-Options:
-  --config, -c       Path to configuration file
-  --dry-run          Run without sending emails
-  --skip-scraping    Skip job scraping step
-  --skip-matching    Skip job matching step
-  --skip-cover-letters  Skip cover letter generation
-  --skip-email       Skip sending email
-  --stats            Show database statistics and exit
-  --verbose, -v      Enable verbose logging
+match_threshold: 70  # Lower = more jobs, Higher = stricter matching
 ```
 
-## Troubleshooting
+---
 
-### "GEMINI_API_KEY not configured"
-- Ensure `.env` file exists with valid API key
-- Or set environment variable: `export GEMINI_API_KEY=your_key`
+## Automatic Daily Runs (Optional)
 
-### "Gmail credentials not found"
-- Download OAuth credentials from Google Cloud Console
-- Save as `credentials.json` in project root
+If you host this on GitHub, it can run automatically every day at 8 AM without you doing anything. See the technical documentation for setup instructions.
 
-### "No jobs found"
-- Check if scrapers are enabled in config
-- Some boards may have changed their structure
-- Try running with `--verbose` for detailed logs
+---
 
-### Rate limiting
-- Increase `rate_limit_seconds` in config
-- Some boards may block automated access
+## Questions?
 
-## License
+**Q: Is this free to use?**
+A: Yes! Google Gemini has a free tier that's more than enough for daily job searching.
 
-MIT License - See LICENSE file for details.
+**Q: Will this apply to jobs for me?**
+A: No – it finds and prepares applications, but you review and submit them yourself.
 
-## Contributing
+**Q: How accurate is the matching?**
+A: The AI does a good job, but always review matches yourself. Think of it as a smart filter, not a replacement for your judgment.
 
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Submit a pull request
+**Q: Can I add more job boards?**
+A: Yes, the system is designed to be extended. See the technical documentation.
 
-## Disclaimer
+---
 
-This tool is for personal use. Please respect each job board's terms of service and robots.txt. Use responsibly and avoid excessive scraping.
+## Privacy & Data
+
+- Your resume stays on your computer (or your private GitHub repository)
+- Job data is stored locally in a small database file
+- The AI processes your data through Google's Gemini API (subject to their privacy policy)
+- No data is shared with third parties
+
+---
+
+*Built to help Development Economics researchers find their next opportunity.*
