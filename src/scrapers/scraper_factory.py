@@ -2,6 +2,7 @@
 Scraper Factory
 
 Creates and configures job board scrapers based on configuration.
+Supports both API-based aggregators (SerpApi, JSearch) and direct site scrapers.
 """
 
 import logging
@@ -9,6 +10,12 @@ from typing import Dict, List, Optional
 
 from src.config import Config
 from src.scrapers.base_scraper import BaseScraper, ScraperConfig
+
+# API-based aggregators (most reliable)
+from src.scrapers.serpapi_scraper import SerpApiScraper
+from src.scrapers.jsearch_scraper import JSearchScraper
+
+# Direct site scrapers (fallback, may break)
 from src.scrapers.reliefweb import ReliefWebScraper
 from src.scrapers.devex import DevExScraper
 from src.scrapers.impactpool import ImpactPoolScraper
@@ -16,6 +23,7 @@ from src.scrapers.unjobs import UNJobsScraper
 from src.scrapers.worldbank import WorldBankScraper
 from src.scrapers.eighty_thousand_hours import EightyThousandHoursScraper
 from src.scrapers.econjobmarket import EconJobMarketScraper
+from src.scrapers.web_search import WebSearchScraper
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +33,20 @@ class ScraperFactory:
     Factory for creating and managing job board scrapers.
     
     Handles scraper instantiation, configuration, and lifecycle.
+    Prioritizes API-based aggregators over direct site scrapers.
     """
     
     # Map of scraper names to classes
+    # Order reflects recommended priority
     SCRAPER_CLASSES = {
+        # API aggregators (reliable, use APIs)
+        "serpapi": SerpApiScraper,
+        "jsearch": JSearchScraper,
+        
+        # Web search fallback
+        "web_search": WebSearchScraper,
+        
+        # Direct site scrapers (may break)
         "reliefweb": ReliefWebScraper,
         "devex": DevExScraper,
         "impactpool": ImpactPoolScraper,
@@ -67,6 +85,15 @@ class ScraperFactory:
         # Get scraper-specific configuration
         scraper_config_dict = self.config.get_scraper_config(name)
         
+        # Extract only string headers (not other config params)
+        extra_headers = {
+            k: v for k, v in scraper_config_dict.items() 
+            if isinstance(v, str) and k.lower() not in [
+                'base_url', 'api_url', 'search_path', 'careers_url',
+                'max_results_per_keyword'
+            ]
+        }
+        
         # Create scraper configuration
         scraper_config = ScraperConfig(
             name=name,
@@ -75,7 +102,8 @@ class ScraperFactory:
             timeout_seconds=self.config.scrapers.timeout_seconds,
             max_retries=self.config.scrapers.max_retries,
             rotate_user_agent=self.config.scrapers.rotate_user_agent,
-            extra_headers=scraper_config_dict
+            extra_headers=extra_headers,
+            search_params=scraper_config_dict  # Pass full config for custom params
         )
         
         # Instantiate scraper

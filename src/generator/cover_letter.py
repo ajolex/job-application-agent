@@ -108,8 +108,8 @@ class CoverLetterGenerator:
         profile: Dict[str, Any],
         match_score: Optional[MatchScore] = None,
         template: Optional[str] = None,
-        save_pdf: bool = True,
-        save_txt: bool = True
+        save_md: bool = True,
+        save_pdf: bool = False
     ) -> Dict[str, str]:
         """
         Generate cover letter and save to files.
@@ -119,8 +119,8 @@ class CoverLetterGenerator:
             profile: User profile dictionary
             match_score: Optional match score
             template: Optional custom template
-            save_pdf: Save as PDF
-            save_txt: Save as text file
+            save_md: Save as Markdown file (default: True) - editable!
+            save_pdf: Save as PDF (default: False)
             
         Returns:
             Dictionary with file paths
@@ -135,15 +135,35 @@ class CoverLetterGenerator:
         
         paths = {}
         
-        # Save text file
-        if save_txt:
-            txt_path = self.output_dir / f"{base_filename}.txt"
-            with open(txt_path, "w", encoding="utf-8") as f:
-                f.write(cover_letter)
-            paths["txt"] = str(txt_path)
-            logger.debug(f"Saved cover letter to {txt_path}")
+        # Signature image URL
+        signature_url = "https://aj-impact.com/wp-content/uploads/2025/12/signature.jpg"
         
-        # Save PDF
+        # Save Markdown file (editable format)
+        if save_md:
+            md_path = self.output_dir / f"{base_filename}.md"
+            
+            # Add markdown header with job info and signature at end
+            md_content = f"""# Cover Letter: {job.title}
+
+**Organization:** {job.organization}  
+**Location:** {job.location}  
+**Generated:** {datetime.now().strftime("%Y-%m-%d")}  
+**Job URL:** {job.url}
+
+---
+
+{cover_letter}
+
+![Signature]({signature_url})
+
+**{profile.get("name", "")}**
+"""
+            with open(md_path, "w", encoding="utf-8") as f:
+                f.write(md_content)
+            paths["md"] = str(md_path)
+            logger.debug(f"Saved cover letter to {md_path}")
+        
+        # Save PDF (optional)
         if save_pdf:
             pdf_path = self.output_dir / f"{base_filename}.pdf"
             self._save_as_pdf(cover_letter, pdf_path, profile.get("name", ""))

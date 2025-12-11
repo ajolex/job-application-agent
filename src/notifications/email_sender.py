@@ -102,7 +102,7 @@ class EmailSender:
         recipient: str,
         matched_jobs: List[tuple],
         cv_path: Optional[str] = None,
-        include_cover_letters: bool = True
+        include_cover_letters: bool = False  # Changed default to False
     ) -> bool:
         """
         Send daily summary email with matched jobs.
@@ -111,7 +111,7 @@ class EmailSender:
             recipient: Email recipient
             matched_jobs: List of (Job, MatchScore) tuples
             cv_path: Optional path to CV file
-            include_cover_letters: Whether to attach cover letters
+            include_cover_letters: Whether to attach cover letters (default False)
             
         Returns:
             True if sent successfully
@@ -120,24 +120,17 @@ class EmailSender:
             logger.info("No matched jobs to send")
             return False
         
-        # Build email content
+        # Build email content - compact summary format
         subject = f"🎯 Job Matches Found - {datetime.now().strftime('%B %d, %Y')} ({len(matched_jobs)} jobs)"
         
         html_content = self._build_summary_html(matched_jobs)
         text_content = self._build_summary_text(matched_jobs)
         
-        # Collect attachments
+        # No attachments by default - cover letters saved locally as .md files
         attachments = []
         
         if cv_path and os.path.exists(cv_path):
             attachments.append(cv_path)
-        
-        if include_cover_letters:
-            for job, score in matched_jobs:
-                # Check if cover letter was generated
-                cover_letter_attr = getattr(score, 'cover_letter_path', None)
-                if cover_letter_attr and os.path.exists(cover_letter_attr):
-                    attachments.append(cover_letter_attr)
         
         return self.send_email(
             recipient=recipient,
@@ -237,36 +230,24 @@ class EmailSender:
             return None
     
     def _build_summary_html(self, matched_jobs: List[tuple]) -> str:
-        """Build HTML content for summary email."""
+        """Build compact HTML content for summary email."""
         jobs_html = ""
         
         for i, (job, score) in enumerate(matched_jobs, 1):
-            highlights = ""
-            if hasattr(score, 'highlights') and score.highlights:
-                highlights = "<ul>" + "".join(f"<li>{h}</li>" for h in score.highlights[:3]) + "</ul>"
+            generated_date = datetime.now().strftime('%Y-%m-%d')
+            job_url = job.application_url or job.url
             
             jobs_html += f"""
-            <div style="margin-bottom: 25px; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #fafafa;">
+            <div style="margin-bottom: 15px; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #fafafa;">
                 <h3 style="margin: 0 0 10px 0; color: #1a73e8;">
                     {i}. {job.title}
                 </h3>
-                <p style="margin: 5px 0; color: #5f6368;">
-                    <strong>{job.organization}</strong> • {job.location or 'Location not specified'}
-                </p>
-                <div style="margin: 15px 0; padding: 10px; background-color: #e8f5e9; border-radius: 4px;">
-                    <strong style="color: #2e7d32;">Match Score: {score.overall:.0f}/100</strong>
-                </div>
-                <p style="margin: 10px 0; color: #3c4043;">
-                    {score.reasoning if hasattr(score, 'reasoning') else ''}
-                </p>
-                {f'<div style="margin: 10px 0;"><strong>Key Strengths:</strong>{highlights}</div>' if highlights else ''}
-                <p style="margin: 10px 0;">
-                    <strong>Deadline:</strong> {job.deadline or 'Not specified'}
-                </p>
-                <a href="{job.application_url or job.url}" 
-                   style="display: inline-block; padding: 10px 20px; background-color: #1a73e8; color: white; text-decoration: none; border-radius: 4px; margin-top: 10px;">
-                    Apply Now →
-                </a>
+                <table style="width: 100%; font-size: 14px; color: #3c4043;">
+                    <tr><td style="padding: 4px 0;"><strong>Organization:</strong></td><td>{job.organization}</td></tr>
+                    <tr><td style="padding: 4px 0;"><strong>Location:</strong></td><td>{job.location or 'Not specified'}</td></tr>
+                    <tr><td style="padding: 4px 0;"><strong>Generated:</strong></td><td>{generated_date}</td></tr>
+                    <tr><td style="padding: 4px 0;"><strong>Job URL:</strong></td><td><a href="{job_url}" style="color: #1a73e8;">{job_url}</a></td></tr>
+                </table>
             </div>
             """
         
@@ -281,8 +262,8 @@ class EmailSender:
             </style>
         </head>
         <body>
-            <h2>🎯 Your Daily Job Matches</h2>
-            <p>Found <strong>{len(matched_jobs)}</strong> positions matching your profile:</p>
+            <h2>🎯 Job Application Agent - Daily Summary</h2>
+            <p>Found <strong>{len(matched_jobs)}</strong> positions matching your profile. Cover letters have been generated and saved locally.</p>
             
             {jobs_html}
             
@@ -298,16 +279,20 @@ class EmailSender:
     
     def _build_summary_text(self, matched_jobs: List[tuple]) -> str:
         """Build plain text content for summary email."""
-        text = f"Your Daily Job Matches - {datetime.now().strftime('%B %d, %Y')}\n"
-        text += f"Found {len(matched_jobs)} positions matching your profile:\n\n"
+        text = f"Job Application Agent - Daily Summary\n"
+        text += f"{datetime.now().strftime('%B %d, %Y')}\n"
+        text += f"Found {len(matched_jobs)} positions matching your profile.\n"
+        text += "Cover letters have been generated and saved locally.\n\n"
         text += "=" * 50 + "\n\n"
         
+        generated_date = datetime.now().strftime('%Y-%m-%d')
+        
         for i, (job, score) in enumerate(matched_jobs, 1):
+            job_url = job.application_url or job.url
             text += f"{i}. {job.title}\n"
             text += f"   Organization: {job.organization}\n"
             text += f"   Location: {job.location or 'Not specified'}\n"
-            text += f"   Match Score: {score.overall:.0f}/100\n"
-            text += f"   Deadline: {job.deadline or 'Not specified'}\n"
-            text += f"   Apply: {job.application_url or job.url}\n\n"
+            text += f"   Generated: {generated_date}\n"
+            text += f"   Job URL: {job_url}\n\n"
         
         return text

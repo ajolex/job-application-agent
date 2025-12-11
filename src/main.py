@@ -293,7 +293,8 @@ class JobApplicationAgent:
                 )
                 
                 # Add cover letter path to score for email attachment
-                score.cover_letter_path = paths.get("pdf") or paths.get("txt")
+                # Prefer .md (editable), fallback to .pdf if generated
+                score.cover_letter_path = paths.get("md") or paths.get("pdf")
                 
                 # Save to database
                 if score.cover_letter_path:

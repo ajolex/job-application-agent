@@ -43,17 +43,22 @@ job_search:
   max_jobs_per_run: 50
 
 scrapers:
-  # Enabled scrapers (comment out to disable)
+  # Enabled scrapers - ordered by reliability
+  # The agent uses job aggregator APIs which bypass anti-bot measures
   enabled:
-    - econjobmarket
-    - devex
-    - reliefweb
-    - impactpool
-    - unjobs
-    - worldbank
-    - eighty_thousand_hours
-    # - ssrn  # Often requires authentication
-    # - ideas_repec
+    # PRIMARY: API-based aggregators (most reliable)
+    - serpapi        # Google Jobs API - aggregates LinkedIn, Indeed, Glassdoor, etc.
+    - jsearch        # RapidAPI aggregator - great for indie projects
+    
+    # FALLBACK: Direct site scrapers (less reliable, may break)
+    # - web_search   # DuckDuckGo web search - use if no API keys
+    # - econjobmarket
+    # - devex
+    # - reliefweb
+    # - impactpool
+    # - unjobs
+    # - worldbank
+    # - eighty_thousand_hours
   
   # Rate limiting: seconds between requests to same domain
   rate_limit_seconds: 2
@@ -97,6 +102,46 @@ scraper_configs:
   eighty_thousand_hours:
     base_url: "https://jobs.80000hours.org"
     api_url: "https://api.80000hours.org/job-board/vacancies"
+  
+  # === PRIMARY API SCRAPERS (recommended) ===
+  
+  serpapi:
+    # SerpApi Google Jobs - Industry Standard
+    # Aggregates from LinkedIn, Indeed, Glassdoor, ZipRecruiter, company sites
+    # Get API key at: https://serpapi.com/
+    # Set SERPAPI_API_KEY environment variable or add api_key here
+    # api_key: "your_serpapi_key_here"  # Or use SERPAPI_API_KEY env var
+    results_per_query: 40
+    location: ""  # Leave empty for global, or "United States", "Remote", etc.
+  
+  jsearch:
+    # JSearch via RapidAPI - Great for indie developers
+    # Aggregates from LinkedIn, Indeed, Glassdoor, and more
+    # Get API key at: https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch
+    # Set RAPIDAPI_KEY environment variable or add api_key here
+    # api_key: "your_rapidapi_key_here"  # Or use RAPIDAPI_KEY env var
+    results_per_page: 20
+    country: "us"  # Country code
+    date_posted: "week"  # all, today, 3days, week, month
+    remote_only: false
+  
+  web_search:
+    # Uses DuckDuckGo to search across the entire web
+    # Fallback option if you don't have API keys
+    max_results_per_keyword: 30
+    # Priority sites to look for in results
+    priority_sites:
+      - "careers.un.org"
+      - "jobs.undp.org"
+      - "worldbank.org"
+      - "devex.com"
+      - "reliefweb.int"
+      - "impactpool.org"
+      - "econjobmarket.org"
+      - "80000hours.org"
+      - "linkedin.com/jobs"
+      - "indeed.com"
+      - "idealist.org"
     
   ssrn:
     base_url: "https://www.ssrn.com"
@@ -108,7 +153,7 @@ scraper_configs:
 
 gemini:
   # Model to use for matching and generation
-  model: "gemini-1.5-flash"
+  model: "gemini-2.0-flash-exp"
   # Temperature for generation (0.0-1.0)
   temperature: 0.7
   # Max tokens for responses

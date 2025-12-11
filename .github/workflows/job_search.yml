@@ -69,6 +69,8 @@ jobs:
       - name: Run Job Application Agent
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SERPAPI_API_KEY: ${{ secrets.SERPAPI_API_KEY }}
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
           EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
           DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
         run: |

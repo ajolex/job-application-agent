@@ -29,6 +29,79 @@ class MatchScore:
     reasoning: str
     highlights: List[str]
     concerns: List[str]
+    cover_letter_path: Optional[str] = None  # Added for email attachments
+    filtered_reason: Optional[str] = None  # Why job was filtered out
+
+
+# Patterns that indicate visa sponsorship is NOT available
+NO_VISA_PATTERNS = [
+    "no visa sponsorship",
+    "will not sponsor",
+    "cannot sponsor",
+    "not able to sponsor",
+    "unable to sponsor",
+    "does not sponsor",
+    "won't sponsor",
+    "not sponsor visa",
+    "sponsorship not available",
+    "sponsorship is not available",
+    "no sponsorship",
+    "must be authorized to work",
+    "must have work authorization",
+    "must have existing work authorization",
+    "without sponsorship",
+    "work authorization required",
+]
+
+# Patterns that indicate US citizenship/nationality is required
+CITIZENSHIP_REQUIRED_PATTERNS = [
+    "us citizen",
+    "u.s. citizen",
+    "united states citizen",
+    "american citizen",
+    "citizenship required",
+    "must be a citizen",
+    "citizens only",
+    "us nationals only",
+    "u.s. nationals",
+    "security clearance required",  # Usually requires citizenship
+    "secret clearance",
+    "top secret clearance",
+    "ts/sci clearance",
+    "must be able to obtain security clearance",
+    "us persons only",
+    "u.s. persons only",
+    "itar restricted",  # Export control, usually requires citizenship
+    "export control",
+]
+
+
+def check_visa_eligibility(job_description: str) -> tuple[bool, Optional[str]]:
+    """
+    Check if a job is eligible for international candidates.
+    
+    Args:
+        job_description: Full job description text
+        
+    Returns:
+        Tuple of (is_eligible, reason_if_not_eligible)
+    """
+    if not job_description:
+        return True, None
+    
+    desc_lower = job_description.lower()
+    
+    # Check for no visa sponsorship
+    for pattern in NO_VISA_PATTERNS:
+        if pattern in desc_lower:
+            return False, f"No visa sponsorship: '{pattern}' found in description"
+    
+    # Check for citizenship requirements
+    for pattern in CITIZENSHIP_REQUIRED_PATTERNS:
+        if pattern in desc_lower:
+            return False, f"Citizenship required: '{pattern}' found in description"
+    
+    return True, None
 
 
 class JobMatcher:
@@ -42,7 +115,7 @@ class JobMatcher:
     def __init__(
         self,
         api_key: str,
-        model: str = "gemini-1.5-flash",
+        model: str = "gemini-2.0-flash-exp",
         temperature: float = 0.3,
         threshold: int = 70
     ):
@@ -121,9 +194,17 @@ class JobMatcher:
             List of (job, match_score) tuples, sorted by score
         """
         results = []
+        filtered_count = 0
         
         for i, job in enumerate(jobs):
             logger.info(f"Matching job {i+1}/{len(jobs)}: {job.title}")
+            
+            # Check visa/citizenship eligibility first
+            is_eligible, filter_reason = check_visa_eligibility(job.description or "")
+            if not is_eligible:
+                logger.info(f"Filtered out (visa/citizenship): {job.title} - {filter_reason}")
+                filtered_count += 1
+                continue
             
             score = self.match_job(job, profile)
             
@@ -137,6 +218,8 @@ class JobMatcher:
         results.sort(key=lambda x: x[1].overall, reverse=True)
         
         logger.info(f"Matched {len(results)} jobs above threshold {self.threshold}")
+        if filtered_count > 0:
+            logger.info(f"Filtered out {filtered_count} jobs due to visa/citizenship requirements")
         return results
     
     def _build_matching_prompt(self, job: Job, profile: Dict[str, Any]) -> str:

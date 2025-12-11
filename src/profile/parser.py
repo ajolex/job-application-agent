@@ -776,6 +776,7 @@ class ProfileParser:
         
         return {
             "name": self.profile.name,
+            "email": self.profile.email,
             "summary": self.profile.summary,
             "skills": self.profile.get_all_skills(),
             "education": self.profile.get_education_summary(),

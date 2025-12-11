@@ -9,7 +9,7 @@ This tool automatically searches multiple job websites every day, finds position
 ## What Does This Do?
 
 1. **Reads your CV/resume** to understand your skills, experience, and qualifications
-2. **Searches 8+ job websites** including World Bank, UN Jobs, DevEx, ReliefWeb, and academic job boards
+2. **Searches Google Jobs, LinkedIn, Indeed, Glassdoor** and many more via smart job APIs
 3. **Uses AI to match jobs to your profile** and scores how well each job fits you (0-100)
 4. **Writes draft cover letters** tailored to each matched position
 5. **Sends you a daily email** with your top job matches and ready-to-use cover letters
@@ -17,15 +17,20 @@ This tool automatically searches multiple job websites every day, finds position
 
 ---
 
-## Job Boards Searched
+## How Job Search Works
 
-- **ReliefWeb** – Humanitarian and development jobs worldwide
-- **DevEx** – International development careers
-- **ImpactPool** – Social impact and sustainability roles
-- **UN Jobs** – United Nations positions
-- **World Bank** – World Bank Group opportunities
-- **80,000 Hours** – High-impact career opportunities
-- **EconJobMarket** – Academic economics positions
+Unlike simple web scrapers that often break, this agent uses **professional job aggregator APIs**:
+
+| Service | What It Does | Cost |
+|---------|--------------|------|
+| **SerpApi** (recommended) | Searches Google Jobs - aggregates LinkedIn, Indeed, Glassdoor, ZipRecruiter, and 50+ job boards | Free tier: 100 searches/month |
+| **JSearch** | RapidAPI aggregator - great for indie projects | Free tier: 500 searches/month |
+
+These APIs are the same tools used by professional job search AI agents because:
+- ✅ Google already aggregates jobs from everywhere
+- ✅ No website blocking or CAPTCHA issues
+- ✅ Clean, structured data (not broken HTML)
+- ✅ Much more reliable than direct scraping
 
 ---
 
@@ -59,17 +64,27 @@ This tool automatically searches multiple job websites every day, finds position
 
 ---
 
-### Step 1: Get the Required Accounts (Free)
+### Step 1: Get the Required API Keys
 
-You'll need two things:
+You'll need these API keys:
 
-1. **Google Gemini API Key** (free tier available)
+1. **Google Gemini API Key** (free tier - for AI matching)
    - Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
    - Sign in with your Google account
    - Click "Create API Key"
    - Copy the key somewhere safe
 
-2. **Gmail Account** (for receiving job notifications)
+2. **SerpApi Key** (free tier: 100 searches/month - for job search)
+   - Go to [SerpApi](https://serpapi.com/)
+   - Create a free account
+   - Copy your API key from the dashboard
+
+   **OR** use JSearch instead (free tier: 500 searches/month):
+   - Go to [JSearch on RapidAPI](https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch)
+   - Subscribe to the free plan
+   - Copy your RapidAPI key
+
+3. **Gmail Account** (for receiving job notifications)
    - Use your existing Gmail or create a new one
    - You'll set up permissions later to let the tool send you emails
 
@@ -78,8 +93,9 @@ You'll need two things:
 1. Download this project to your computer
 2. Find the file called `.env.example` and rename it to `.env`
 3. Open `.env` in any text editor and fill in:
-   - Your Gemini API key
-   - Your email address
+   - `GEMINI_API_KEY` - Your Gemini API key
+   - `SERPAPI_API_KEY` - Your SerpApi key (or `RAPIDAPI_KEY` for JSearch)
+   - `EMAIL_ADDRESS` - Your email address
 
 ### Step 3: Add Your Resume
 
@@ -127,10 +143,10 @@ python -m src.main --skip-scraping
 
 The tool will:
 
-- Search all job boards
-- Match jobs to your profile
-- Generate cover letters for good matches
-- Email you the results
+- Search all job boards via APIs
+- Match jobs to your profile (filtering out visa-restricted positions)
+- Generate cover letters saved as `.md` files in `output/cover_letters/`
+- Email you a compact summary with job links
 
 ---
 
@@ -141,12 +157,12 @@ The tool will:
 2. 🔍 It visits each job website and searches for relevant positions
 3. 🤖 AI reads each job description and compares it to your resume
 4. 📊 Jobs are scored from 0-100 based on how well they match
-5. ✉️ Anything scoring 70+ gets a cover letter draft
-6. 📧 You receive an email with all matched jobs and cover letters
+5. ✉️ Anything scoring 70+ gets a cover letter draft saved locally
+6. 📧 You receive a summary email with job links
 
 **What You Get:**
-- A daily email with job opportunities ranked by fit
-- Ready-to-customize cover letters for each position
+- A daily email summary with job opportunities and links
+- Ready-to-customize cover letters saved as `.md` files (editable Markdown)
 - Direct links to apply
 - No duplicate listings – it remembers what you've seen
 

@@ -50,7 +50,7 @@ class ScrapersConfig:
 @dataclass
 class GeminiConfig:
     """Gemini API configuration."""
-    model: str = "gemini-1.5-flash"
+    model: str = "gemini-2.5-flash"
     temperature: float = 0.7
     max_tokens: int = 4096
     safety_threshold: str = "BLOCK_ONLY_HIGH"
@@ -210,7 +210,7 @@ class Config:
         """Load Gemini API configuration."""
         section = self._raw_config.get("gemini", {})
         return GeminiConfig(
-            model=section.get("model", "gemini-1.5-flash"),
+            model=section.get("model", "gemini-2.0-flash-exp"),
             temperature=section.get("temperature", 0.7),
             max_tokens=section.get("max_tokens", 4096),
             safety_threshold=section.get("safety_threshold", "BLOCK_ONLY_HIGH")

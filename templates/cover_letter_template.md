@@ -61,6 +61,6 @@ Sincerely,
 - Be specific, not generic
 - Quantify achievements where possible
 - Show personality while remaining professional
-- Keep to 300-400 words
+- Keep to 300-500 words
 - Avoid clichés like "I am writing to apply..."
 - Focus on what you can contribute, not just what you want

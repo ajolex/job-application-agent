@@ -26,7 +26,7 @@ class QuestionAnswerer:
     def __init__(
         self,
         api_key: str,
-        model: str = "gemini-1.5-flash",
+        model: str = "gemini-2.0-flash-exp",
         temperature: float = 0.6
     ):
         """

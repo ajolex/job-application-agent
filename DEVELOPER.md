@@ -60,14 +60,15 @@ python -m src.main
 ## Tech Stack
 
 | Component | Technology | Purpose |
-|-----------|------------|---------|
+|-----------|------------|----------|
 | Runtime | Python 3.11+ | Core language |
-| AI/LLM | Google Gemini (gemini-1.5-flash) | Job matching, cover letter generation |
+| AI/LLM | Google Gemini (gemini-2.0-flash-exp) | Job matching, cover letter generation |
+| Job APIs | SerpApi, JSearch (RapidAPI) | Reliable job aggregation |
 | Database | SQLite | Job tracking, deduplication |
-| Web Scraping | BeautifulSoup4, lxml, requests | HTML parsing |
+| Web Scraping | BeautifulSoup4, lxml, requests | HTML parsing (fallback) |
 | HTTP | requests, fake-useragent | Web requests with rotation |
-| Email | Gmail API (google-api-python-client) | Notifications |
-| PDF | ReportLab | Cover letter PDF generation |
+| Email | Gmail API (google-api-python-client) | Summary notifications |
+| Markdown | Cover letters saved as `.md` | Editable cover letter output |
 | Config | PyYAML, python-dotenv | Configuration management |
 | Retry Logic | tenacity | Exponential backoff |
 | CI/CD | GitHub Actions | Daily automation |
@@ -92,6 +93,9 @@ job-application-agent/
 │   │   ├── __init__.py
 │   │   ├── base_scraper.py     # Abstract base scraper class
 │   │   ├── scraper_factory.py  # Factory for scraper instantiation
+│   │   ├── serpapi_scraper.py  # SerpApi Google Jobs (PRIMARY)
+│   │   ├── jsearch_scraper.py  # JSearch RapidAPI (PRIMARY)
+│   │   ├── web_search.py       # DuckDuckGo web search (fallback)
 │   │   ├── reliefweb.py        # ReliefWeb API scraper
 │   │   ├── devex.py            # DevEx scraper
 │   │   ├── impactpool.py       # ImpactPool scraper
@@ -178,6 +182,52 @@ profile = parser.parse()
 
 ### 3. Scrapers (`src/scrapers/`)
 
+#### Why API-Based Scrapers?
+
+Major job boards (LinkedIn, Indeed, Glassdoor) aggressively block bots. Instead of fighting anti-bot measures, this agent uses **job aggregator APIs** that legally scrape and structure the data:
+
+| Tool | Best For | API Key Required |
+|------|----------|-----------------|
+| **SerpApi** | Most reliable - Google Jobs aggregates 50+ boards | Yes (`SERPAPI_API_KEY`) |
+| **JSearch** | Indie projects - Cheap and fast via RapidAPI | Yes (`RAPIDAPI_KEY`) |
+| **Web Search** | Fallback - DuckDuckGo, no API key needed | No |
+
+#### Primary: SerpApi (Google Jobs)
+
+The industry standard. Google already aggregates from LinkedIn, Indeed, Glassdoor, ZipRecruiter, and thousands of company career pages.
+
+```python
+from src.scrapers.serpapi_scraper import SerpApiScraper
+
+# Requires SERPAPI_API_KEY environment variable
+scraper = SerpApiScraper(config)
+jobs = scraper.scrape(["development economics", "research associate"])
+```
+
+Get your API key at: https://serpapi.com/
+
+#### Primary: JSearch (RapidAPI)
+
+Great for indie developers and hackathons. Cheaper than SerpApi.
+
+```python
+from src.scrapers.jsearch_scraper import JSearchScraper
+
+# Requires RAPIDAPI_KEY environment variable
+scraper = JSearchScraper(config)
+jobs = scraper.scrape(["economist", "policy research"])
+```
+
+Get your API key at: https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch
+
+#### Fallback: Direct Site Scrapers
+
+These scrapers hit job sites directly and may break when sites change their HTML:
+
+- `reliefweb.py` - Uses ReliefWeb's public API (stable)
+- `econjobmarket.py` - Direct HTML scraping (may break)
+- `devex.py`, `impactpool.py`, `unjobs.py`, `worldbank.py` - Direct HTML (may break)
+
 #### Base Scraper
 
 All scrapers inherit from `BaseScraper`:
@@ -229,7 +279,7 @@ for scraper in scrapers:
 
 ### 4. Job Matcher (`src/matching/matcher.py`)
 
-AI-powered job matching using Gemini:
+AI-powered job matching using Gemini with automatic filtering for visa/citizenship restrictions:
 
 ```python
 from src.matching.matcher import JobMatcher, MatchScore
@@ -248,6 +298,15 @@ score: MatchScore = matcher.match_job(job, profile)
 # - concerns: List[str]
 ```
 
+**Visa/Citizenship Filtering:**
+
+The matcher automatically filters out jobs that explicitly require:
+- US citizenship or nationals only
+- Specific country citizenship requirements  
+- No visa sponsorship available
+
+This filtering happens before AI matching to save API costs.
+
 **Matching prompt template:**
 - Sends profile summary + job description to Gemini
 - Requests JSON response with scores and reasoning
@@ -262,7 +321,10 @@ from src.generator.cover_letter import CoverLetterGenerator
 
 generator = CoverLetterGenerator(api_key="your_key")
 letter = generator.generate(job, profile, match_score)
-pdf_path = generator.save_as_pdf(letter, "output/cover_letter.pdf")
+# Cover letters are saved as Markdown files with job details header
+# and signature image at the end
+md_path = generator.save(letter, job, "output/cover_letters/")
+# Returns: output/cover_letters/organization_title_20251211.md
 ```
 
 #### Question Answerer
@@ -349,14 +411,14 @@ CREATE TABLE cover_letters (
     id INTEGER PRIMARY KEY,
     job_id INTEGER,
     content TEXT,
-    pdf_path TEXT,
+    md_path TEXT,
     created_at TIMESTAMP
 );
 ```
 
 ### 7. Email Sender (`src/notifications/email_sender.py`)
 
-Gmail API integration:
+Gmail API integration with compact summary emails:
 
 ```python
 from src.notifications.email_sender import EmailSender
@@ -366,14 +428,23 @@ sender = EmailSender(
     token_path="token.json"
 )
 
-sender.send_daily_summary(
-    to_email="user@example.com",
-    matched_jobs=jobs_with_scores,
-    attachments=["output/cover_letter.pdf"]
+# Sends compact summary - no cover letter attachments
+# Cover letters are saved locally as .md files
+sender.send_job_summary(
+    recipient="user@example.com",
+    matched_jobs=jobs_with_scores
 )
 ```
 
+**Email format:**
+Each job in the summary shows:
+- **Organization:** Company name
+- **Location:** Job location
+- **Generated:** Date cover letter was created
+- **Job URL:** Direct link to apply
+
 **OAuth flow:**
+
 1. First run opens browser for authentication
 2. Saves token to `token.json` for future use
 3. Automatically refreshes expired tokens
@@ -553,6 +624,8 @@ jobs:
 |----------|----------|-------------|
 | `GEMINI_API_KEY` | Yes | Google Gemini API key |
 | `EMAIL_ADDRESS` | Yes | Email for notifications |
+| `SERPAPI_API_KEY` | Recommended | SerpApi key for Google Jobs search |
+| `RAPIDAPI_KEY` | Recommended | RapidAPI key for JSearch |
 | `CONFIG_PATH` | No | Override config file path |
 | `LOG_LEVEL` | No | DEBUG, INFO, WARNING, ERROR |
 
