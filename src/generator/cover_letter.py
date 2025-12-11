@@ -9,10 +9,10 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 import google.generativeai as genai
-from reportlab.lib.pagesizes import letter
+from reportlab.lib.pagesizes import letter as letter_size
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
@@ -36,7 +36,8 @@ class CoverLetterGenerator:
         api_key: str,
         model: str = "gemini-1.5-flash",
         temperature: float = 0.7,
-        output_dir: str = "output/cover_letters"
+        output_dir: str = "output/cover_letters",
+        past_letters_dir: str = "templates/past_cover_letters"
     ):
         """
         Initialize cover letter generator.
@@ -46,16 +47,22 @@ class CoverLetterGenerator:
             model: Gemini model to use
             temperature: Generation temperature
             output_dir: Directory to save generated cover letters
+            past_letters_dir: Directory containing past cover letters for style learning
         """
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        
+        self.past_letters_dir = Path(past_letters_dir)
         
         # Configure Gemini
         genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel(model)
         self.temperature = temperature
         
-        logger.info(f"Initialized CoverLetterGenerator")
+        # Load and analyze past cover letters
+        self.past_letters_insights = self._analyze_past_letters()
+        
+        logger.info(f"Initialized CoverLetterGenerator with {len(self._load_past_letters())} past letters for reference")
     
     def generate(
         self,
@@ -164,6 +171,16 @@ class CoverLetterGenerator:
 - Match Reasoning: {match_score.reasoning}
 """
         
+        # Include past letters style insights
+        style_insights = ""
+        if self.past_letters_insights:
+            style_insights = f"""
+## WRITING STYLE (based on candidate's past cover letters):
+{self.past_letters_insights}
+
+IMPORTANT: Write in this same style and voice. Use similar phrases and structure patterns where appropriate.
+"""
+        
         template_instruction = ""
         if template:
             template_instruction = f"""
@@ -191,6 +208,7 @@ Location: {job.location}
 Description: {job.description[:2500] if job.description else 'Not provided'}
 Requirements: {job.requirements[:1000] if job.requirements else 'Not provided'}
 {match_insights}
+{style_insights}
 {template_instruction}
 
 ## INSTRUCTIONS:
@@ -222,7 +240,7 @@ Write ONLY the cover letter, no additional commentary."""
         try:
             doc = SimpleDocTemplate(
                 str(output_path),
-                pagesize=letter,
+                pagesize=letter_size,
                 rightMargin=inch,
                 leftMargin=inch,
                 topMargin=inch,
@@ -265,3 +283,139 @@ Write ONLY the cover letter, no additional commentary."""
         """Load a cover letter template from file."""
         with open(template_path, 'r', encoding='utf-8') as f:
             return f.read()
+    
+    def _load_past_letters(self) -> List[Dict[str, str]]:
+        """
+        Load past cover letters from the configured directory.
+        
+        Supports .md, .txt, and .tex files.
+        
+        Returns:
+            List of dicts with 'filename' and 'content' keys
+        """
+        letters = []
+        
+        if not self.past_letters_dir.exists():
+            logger.warning(f"Past letters directory not found: {self.past_letters_dir}")
+            return letters
+        
+        # Supported file extensions
+        extensions = [".md", ".txt", ".tex"]
+        
+        for ext in extensions:
+            for file_path in self.past_letters_dir.glob(f"*{ext}"):
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    
+                    # Clean up LaTeX files
+                    if ext == ".tex":
+                        content = self._clean_latex(content)
+                    
+                    letters.append({
+                        'filename': file_path.name,
+                        'content': content
+                    })
+                    logger.debug(f"Loaded past letter: {file_path.name}")
+                except Exception as e:
+                    logger.warning(f"Failed to load {file_path}: {e}")
+        
+        return letters
+    
+    def _clean_latex(self, content: str) -> str:
+        """
+        Clean LaTeX content for readability.
+        
+        Removes common LaTeX commands while preserving text.
+        """
+        import re
+        
+        # Remove LaTeX preamble (everything before \begin{document})
+        if r"\begin{document}" in content:
+            content = content.split(r"\begin{document}")[1]
+        if r"\end{document}" in content:
+            content = content.split(r"\end{document}")[0]
+        
+        # Remove common LaTeX commands
+        patterns = [
+            (r'\\textbf\{([^}]+)\}', r'\1'),  # Bold
+            (r'\\textit\{([^}]+)\}', r'\1'),  # Italic
+            (r'\\emph\{([^}]+)\}', r'\1'),    # Emphasis
+            (r'\\href\{[^}]+\}\{([^}]+)\}', r'\1'),  # Links
+            (r'\\[a-zA-Z]+\{([^}]+)\}', r'\1'),  # Other commands with args
+            (r'\\[a-zA-Z]+', ''),  # Commands without args
+            (r'\{|\}', ''),  # Remaining braces
+            (r'\\\\', '\n'),  # Line breaks
+            (r'~', ' '),  # Non-breaking spaces
+        ]
+        
+        for pattern, replacement in patterns:
+            content = re.sub(pattern, replacement, content)
+        
+        # Clean up extra whitespace
+        content = re.sub(r'\n{3,}', '\n\n', content)
+        
+        return content.strip()
+    
+    def _analyze_past_letters(self) -> str:
+        """
+        Analyze past cover letters to extract style insights.
+        
+        Returns:
+            String with insights about writing style, phrases, and patterns
+        """
+        letters = self._load_past_letters()
+        
+        if not letters:
+            return ""
+        
+        # Build analysis prompt
+        letters_text = "\n\n---\n\n".join([
+            f"### {item['filename']}\n{item['content'][:2000]}" 
+            for item in letters[:5]  # Limit to 5 most recent
+        ])
+        
+        analysis_prompt = f"""Analyze these cover letters written by the same person and extract:
+
+1. WRITING STYLE: Describe the tone, formality level, and voice
+2. COMMON PHRASES: List 3-5 effective phrases or expressions they often use
+3. STRUCTURE PATTERNS: How do they typically organize their letters?
+4. UNIQUE STRENGTHS: What makes their letters compelling?
+5. KEY THEMES: What experiences/skills do they consistently highlight?
+
+PAST COVER LETTERS:
+
+{letters_text}
+
+Provide a concise analysis (200 words max) that can guide writing new cover letters in the same style."""
+        
+        try:
+            response = self.model.generate_content(
+                analysis_prompt,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.3,  # Lower temperature for analysis
+                    max_output_tokens=500,
+                )
+            )
+            insights = response.text.strip()
+            logger.info("Successfully analyzed past cover letters for style insights")
+            return insights
+        except Exception as e:
+            logger.warning(f"Failed to analyze past letters: {e}")
+            return ""
+    
+    def get_past_letters_summary(self) -> str:
+        """
+        Get a summary of loaded past cover letters.
+        
+        Returns:
+            String summarizing available past letters
+        """
+        letters = self._load_past_letters()
+        if not letters:
+            return "No past cover letters found."
+        
+        summary = f"Found {len(letters)} past cover letters:\n"
+        for past_letter in letters:
+            summary += f"  - {past_letter['filename']}\n"
+        return summary

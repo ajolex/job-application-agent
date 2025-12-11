@@ -29,14 +29,15 @@ job_search:
   locations:
     - "Remote"
     - "Global"
-    - "Washington, DC"
+    - "United States of America"
+    - "USA"
     - "New York"
     - "London"
     - "Nairobi"
     - "Geneva"
   
   # Minimum match score (0-100) to include job in results
-  match_threshold: 70
+  match_threshold: 80
   
   # Maximum number of jobs to process per run
   max_jobs_per_run: 50
@@ -151,3 +152,12 @@ output:
   cover_letters_dir: "output/cover_letters"
   # Directory for logs
   logs_dir: "logs"
+
+# Past cover letters for style learning
+past_cover_letters:
+  # Directory containing your past cover letters (.md, .txt, .tex)
+  directory: "templates/past_cover_letters"
+  # Whether to use past letters for style learning
+  enabled: true
+  # Maximum number of past letters to analyze
+  max_letters: 5
