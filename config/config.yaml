@@ -37,7 +37,7 @@ job_search:
     - "Geneva"
   
   # Minimum match score (0-100) to include job in results
-  match_threshold: 80
+  match_threshold: 90
   
   # Maximum number of jobs to process per run
   max_jobs_per_run: 50

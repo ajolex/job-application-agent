@@ -2,6 +2,33 @@
 
 Technical documentation for developers who want to understand, modify, or extend the Job Application Agent.
 
+## Quick Start
+
+```bash
+# Clone the repository
+git clone https://github.com/ajolex/job-application-agent.git
+cd job-application-agent
+
+# Create and activate virtual environment
+python -m venv venv
+venv\Scripts\activate  # Windows
+# source venv/bin/activate  # Mac/Linux
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Set up environment variables
+copy .env.example .env  # Windows
+# cp .env.example .env  # Mac/Linux
+# Edit .env and add your GEMINI_API_KEY and EMAIL_ADDRESS
+
+# Run in dry-run mode (no emails)
+python -m src.main --dry-run -v
+
+# Full run
+python -m src.main
+```
+
 ## Architecture Overview
 
 ```

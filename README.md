@@ -31,6 +31,34 @@ This tool automatically searches multiple job websites every day, finds position
 
 ## Getting Started
 
+### Prerequisites
+
+- **Python 3.11 or higher** installed on your computer
+  - [Download Python](https://www.python.org/downloads/)
+  - During installation, check "Add Python to PATH"
+
+### Installation
+
+1. **Download this project** (or clone with Git)
+
+2. **Open a terminal/command prompt** in the project folder
+
+3. **Create a virtual environment** (recommended):
+   ```
+   python -m venv venv
+   ```
+
+4. **Activate the virtual environment**:
+   - Windows: `venv\Scripts\activate`
+   - Mac/Linux: `source venv/bin/activate`
+
+5. **Install required packages**:
+   ```
+   pip install -r requirements.txt
+   ```
+
+---
+
 ### Step 1: Get the Required Accounts (Free)
 
 You'll need two things:
@@ -70,7 +98,35 @@ This allows the tool to send you email notifications:
 
 ### Step 5: Run It!
 
-Once everything is set up, run the tool and it will:
+Open a terminal in the project folder and run:
+
+```
+# Make sure virtual environment is activated first!
+venv\Scripts\activate  # Windows
+# or: source venv/bin/activate  # Mac/Linux
+
+# Run the agent
+python -m src.main
+```
+
+**Other useful commands:**
+
+```
+# Test run (won't send emails)
+python -m src.main --dry-run
+
+# See detailed output
+python -m src.main --dry-run -v
+
+# Check database statistics
+python -m src.main --stats
+
+# Skip scraping (use existing data)
+python -m src.main --skip-scraping
+```
+
+The tool will:
+
 - Search all job boards
 - Match jobs to your profile
 - Generate cover letters for good matches
