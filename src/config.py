@@ -107,7 +107,9 @@ class Config:
         Args:
             config_path: Path to YAML config file. If None, uses default location.
         """
-        self.base_path = Path(__file__).parent.parent.parent
+        # base_path is the project root (job-application-agent/)
+        # __file__ is src/config.py, so .parent.parent gets us to project root
+        self.base_path = Path(__file__).parent.parent
         
         if config_path is None:
             config_path = os.environ.get("CONFIG_PATH", "config/config.yaml")

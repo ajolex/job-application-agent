@@ -34,7 +34,7 @@ class CoverLetterGenerator:
     def __init__(
         self,
         api_key: str,
-        model: str = "gemini-1.5-flash",
+        model: str = "gemini-2.5-flash",
         temperature: float = 0.7,
         output_dir: str = "output/cover_letters",
         past_letters_dir: str = "templates/past_cover_letters"
@@ -219,6 +219,8 @@ Write a professional, personalized cover letter (300-400 words) that:
 3. Demonstrates knowledge of the organization's work and mission
 4. Shows enthusiasm for the role and how it aligns with career goals
 5. Concludes with a confident call to action
+6. Never use dashes or bullet points
+7. Never use word "delve", "hone" or similar overly formal words
 
 Style Guidelines:
 - Professional but personable tone
